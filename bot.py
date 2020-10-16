@@ -33,7 +33,7 @@ def welcome(message):
 
 @bot.message_handler(commands=["start"])
 def phone(message):
-    global phone_number, name, surname, group, course
+    global phone_number, name, surname, group, course, numgroup
     keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
     button_phone = types.KeyboardButton(text="Отправить номер телефона", request_contact=True)
     keyboard.add(button_phone)
@@ -128,8 +128,8 @@ def my_group(message):
 
 
 def num_group(message):
-    global numgroup
-    numgroup = message.text
+    global group
+    group = message.text
     print(numgroup)
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     fir = types.KeyboardButton(text="11")
@@ -143,15 +143,12 @@ def num_group(message):
 
 
 def my_course(message):
-    global group
-    group = message.text
+    global numgroup
+    numgroup = message.text
     print(group)
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     first = types.KeyboardButton(text="1")
-    second = types.KeyboardButton(text="2")
-    three = types.KeyboardButton(text="3")
-    four = types.KeyboardButton(text="4")
-    keyboard.add(first, second, three, four)
+    keyboard.add(first)
     bot.send_message(message.chat.id, "Выберите вашу курс: ", reply_markup=keyboard)
     bot.register_next_step_handler(message, reg_name)
 
@@ -186,21 +183,22 @@ def reg_all(message):
     keyboard.add(key_yes)
     key_no = types.InlineKeyboardButton(text='нет', callback_data='no')
     keyboard.add(key_no)
-    question = ' Фамилия - ' + surname + ' , ' + 'имя - ' + name + ' , ' + ' группа -  ' + numgroup + ',' + 'подгруппа- ' + group + ' курс -  ' + str(
-        course) + ',' + 'все ' \
+    question = ' Фамилия - ' + surname + ' , ' + ' Имя - ' + name + ' , ' + ' Группа -  ' + group + ',' + ' Подгруппа- ' + ' ' + numgroup + ' Курс - ' + str(
+        course) + ' , ' + 'все ' \
                         'верно ' + '? '
     bot.send_message(message.from_user.id, text=question, reply_markup=keyboard)
 
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_worker(call):
+    print(call)
     if call.data == 'yes':
         insert_stmt = (
-            'INSERT INTO user(student_phone_number, student_group, student_course, student_surname,student_name)'
-            'VALUES (%s, %s, %s, %s, %s)'
+            'INSERT INTO user(student_phone_number, student_group , sub_group , student_course, student_surname,student_name )'
+            'VALUES (%s, %s, %s, %s, %s, %s)'
         )
-        data = (str(phone_number), str(group), str(course), str(surname), str(name))
-
+        data = (str(phone_number), str(group), str(numgroup), str(course), str(surname), str(name))
+        print(data)
         try:
             cursor.execute(insert_stmt, data)
             conn.commit()
