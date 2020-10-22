@@ -3,6 +3,7 @@ import config
 import mysql.connector
 
 from telebot import types
+from telebot import AsyncTeleBot
 
 conn = mysql.connector.connect(
     user=config.USER, password=config.PASS, host=config.HOST, database=config.DB)
@@ -26,7 +27,7 @@ def welcome(message):
     reg = types.KeyboardButton("регистрация")
     auth = types.KeyboardButton("аутентификация")
     markup.add(reg, auth)
-    msg = bot.send_message(message.chat.id, ' Добро пожаловать, ',  # + str(message.from_user.username),
+    msg = bot.send_message(message.chat.id, ' Добро пожаловать, в FKNInfo выберите необходимое действие : ',
                            reply_markup=markup)
     bot.register_next_step_handler(msg, phone)
 
@@ -45,7 +46,9 @@ def phone(message):
 
 
 def sel(message):
+
     num = message.contact.phone_number
+
     try:
         with conn.cursor() as cursor:
             # SQL
@@ -56,7 +59,7 @@ def sel(message):
             for row in cursor:
                 global cur_group
                 cur_group = row[2]
-                bot.send_message(message.chat.id, 'Привет, ' + row[4] + ' ' + row[5])
+                bot.send_message(message.chat.id, 'Здравствуйте , ' + row[5] + ' ' + row[6])
                 ats(message)
     except Exception as e:
         print(e)
@@ -69,16 +72,24 @@ def ats(message):
     er = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn2 = types.KeyboardButton(text="расписание")
     btn1 = types.KeyboardButton(text="отсутвующие")
-    er.add(btn2, btn1)
+    btn3 = types.KeyboardButton(text="справка с места учебы")
+    er.add(btn2, btn1, btn3)
     bot.send_message(message.chat.id, 'Что хотите сделать?', reply_markup=er)
+    bot.register_next_step_handler(message, swi)
+
+
+def spravka(message):
+    bot.send_message(message.chat.id, 'Куда вам требуется справка введите название организации : ')
     bot.register_next_step_handler(message, swi)
 
 
 def swi(message):
     qw = cur_group
     print(qw)
+    if message.text == 'справка с места учебы':
+        spravka(message)
     if message.text == 'расписание':
-        next_step(message)
+        scheldure_buttons(message)
     elif message.text == 'отсутвующие':
         try:
             with conn.cursor() as cursor:
@@ -95,36 +106,23 @@ def swi(message):
             conn.close()
 
 
-'''@bot.callback_query_handler(func=lambda call: True)
-def callback_swi(call):
-    if call.data:
-        print(call.data)
-        print(call.message.text)
-    elif call.data == '+':
-        print('tyt')'''
-
-# bot.send_message(call.message.chat.id, 'Регистрация успешна!')
-
-
-'''    elif call.data == 'no':
-        bot.send_message(call.message.chat.id, 'Попробуем еще раз!')
-        phone(call.message)
-    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Регистрация успешна!')
-    next_step(call.message)'''
-
-
 def my_group(message):
     global phone_number
-    phone_number = message.contact.phone_number
-    print(phone_number)
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    ks = types.KeyboardButton(text="КС")
-    kb = types.KeyboardButton(text="КБ")
-    ky = types.KeyboardButton(text="КУ")
-    ki = types.KeyboardButton(text="КИ")
-    keyboard.add(ks, kb, ky, ki)
-    bot.send_message(message.chat.id, "Выберите вашу группу: ", reply_markup=keyboard)
-    bot.register_next_step_handler(message, num_group)
+    try:
+        phone_number = message.contact.phone_number
+        print(phone_number)
+        keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        ks = types.KeyboardButton(text="КС")
+        kb = types.KeyboardButton(text="КБ")
+        ky = types.KeyboardButton(text="КУ")
+        ki = types.KeyboardButton(text="КИ")
+        keyboard.add(ks, kb, ky, ki)
+        bot.send_message(message.chat.id, "Выберите вашу группу: ", reply_markup=keyboard)
+        bot.register_next_step_handler(message, num_group)
+    except Exception:
+        bot.send_message(message.from_user.id, 'Отправте номер')
+
+
 
 
 def num_group(message):
@@ -161,7 +159,7 @@ def reg_name(message):
         bot.send_message(message.from_user.id, 'Какая у вас фамилия?')
         bot.register_next_step_handler(message, reg_surname)
     except Exception:
-        bot.send_message(message.from_user.id, 'Вводите цифрами')
+        bot.send_message(message.from_user.id, 'Вводите буквы')
         my_course(message)
 
 
@@ -185,7 +183,7 @@ def reg_all(message):
     keyboard.add(key_no)
     question = ' Фамилия - ' + surname + ' , ' + ' Имя - ' + name + ' , ' + ' Группа -  ' + group + ',' + ' Подгруппа- ' + ' ' + numgroup + ' Курс - ' + str(
         course) + ' , ' + 'все ' \
-                        'верно ' + '? '
+                          'верно ' + '? '
     bot.send_message(message.from_user.id, text=question, reply_markup=keyboard)
 
 
@@ -242,23 +240,24 @@ def pon(message):
     if message.text == 'понедельник':
         photo = open('./scheldure/pn.png', 'rb')
         bot.send_photo(message.chat.id, photo)
-        next_step(message)
+        ats(message)
     elif message.text == 'вторник':
         photo = open('./scheldure/vt.png', 'rb')
         bot.send_photo(message.chat.id, photo)
-        next_step(message)
+        ats(message)
     elif message.text == 'среда':
         photo = open('./scheldure/sr.png', 'rb')
         bot.send_photo(message.chat.id, photo)
-        next_step(message)
+        ats(message)
     elif message.text == 'четверг':
         photo = open('./scheldure/cht.png', 'rb')
         bot.send_photo(message.chat.id, photo)
-        next_step(message)
+        ats(message)
     elif message.text == 'пятница':
         photo = open('./scheldure/pt.png', 'rb')
         bot.send_photo(message.chat.id, photo)
-        next_step(message)
+        ats(message)
 
 
 bot.polling(none_stop=True)
+
